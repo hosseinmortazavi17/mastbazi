@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>بازی نظر مخفی 🤫</title>
+<style>
+:root{--bg:#fff7e6;--card:#fff;--tx:#2b2140;--ac:#ff5d8f;--ac2:#7c4dff;--mut:#7a6f8f;--bd:#f0dcc0;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#1c1530;--card:#2a2147;--tx:#f4eeff;--mut:#b3a8d1;--bd:#42366b;color-scheme:dark}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font-family:Vazirmatn,Tahoma,sans-serif;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+#app{max-width:480px;margin:auto;padding:18px;text-align:center}h1{font-size:25px;margin:8px 0}h2{font-size:20px;margin:8px 0}
+.card{background:var(--card);border:2px solid var(--bd);border-radius:20px;padding:16px;margin:12px 0}
+button{font:inherit;border:0;border-radius:14px;padding:12px 18px;margin:5px;background:var(--ac);color:#fff;font-weight:700;font-size:16px;cursor:pointer}
+button.alt{background:var(--ac2)}button.hot{background:#e11d48}button.ghost{background:transparent;color:var(--tx);border:2px solid var(--bd)}button.sm{padding:6px 12px;font-size:14px}button.on{outline:3px solid var(--ac2)}button:disabled{opacity:.4}
+input,textarea{font:inherit;width:100%;padding:12px;border-radius:12px;border:2px solid var(--bd);background:var(--bg);color:var(--tx);font-size:16px;margin:4px 0}
+textarea{min-height:100px}.chips{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+.chip{background:var(--bg);border:2px solid var(--bd);border-radius:99px;padding:4px 10px}.chip.d{opacity:.45}.chip.x{text-decoration:line-through}
+.big{font-size:54px}.mut{color:var(--mut);font-size:14px}.cm{font-size:19px;line-height:1.8}.code{font-size:34px;letter-spacing:6px;color:var(--ac);direction:ltr}
+.row{display:flex;justify-content:space-between;align-items:center;padding:6px 4px;border-bottom:1px solid var(--bd)}
+.pop{animation:pp .4s}@keyframes pp{0%{transform:scale(.6);opacity:0}100%{transform:scale(1);opacity:1}}
+.coin{display:inline-block;font-size:70px}.flip{animation:fl .9s}@keyframes fl{to{transform:rotateY(1440deg)}}
+</style></head><body><div id="app"></div>
+<script>
+var IDEAS=['وسط بازی قهر می‌کنه','همیشه آخرین تکه رو می‌خوره','تو بازی تقلب می‌کنه','ریموت رو قایم می‌کنه','خیلی دیر حاضر می‌شه','پیام می‌بینه و جواب نمی‌ده 👻','تو مهمونی اول غذا می‌خوره، آخر کمک می‌کنه','هر حرفی بزنی می‌گه «من که از اول می‌دونستم»','می‌گه ۵ دقیقه دیگه می‌رسم ولی ۱ ساعت بعد میاد'];
+var ws,st=null,saved=null,lastKey='',draft='',rounds=5,rt=null,rejoin=false,MEDAL=['🥇','🥈','🥉'];
+function $(h){document.getElementById('app').innerHTML=h}
+function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function pick(a){return a[Math.floor(Math.random()*a.length)]}
+function tok(){try{var k=sessionStorage.getItem('k');if(!k){k=Math.random().toString(36).slice(2)+Date.now().toString(36);sessionStorage.setItem('k',k)}return k}catch(e){return window.__k||(window.__k=Math.random().toString(36).slice(2)+Date.now())}}
+function send(o){if(ws&&ws.readyState===1)ws.send(JSON.stringify(o))}
+function connect(cb){if(ws){ws.onclose=null;try{ws.close()}catch(e){}}
+ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host);ws.onopen=cb;
+ws.onmessage=function(e){var m=JSON.parse(e.data);
+if(m.kicked){saved=null;st=null;alert('از اتاق خارج شدی');return home()}
+if(m.err){alert(m.err);if(!st||rejoin){saved=null;st=null;rejoin=false;home()}return}
+st=m;rejoin=false;saved.code=m.code;draw()};
+ws.onclose=function(){if(saved&&saved.code){clearTimeout(rt);rt=setTimeout(reconnect,1500)}}}
+function reconnect(){if(!saved||!saved.code)return;connect(function(){rejoin=true;send({t:'join',name:saved.name,code:saved.code,k:tok()})})}
+document.addEventListener('visibilitychange',function(){if(!document.hidden&&saved&&saved.code&&(!ws||ws.readyState>1)){clearTimeout(rt);reconnect()}});
+function home(){lastKey='';var c=(location.search.match(/room=(\d+)/)||[])[1]||'';
+$('<div class="big">🤫</div><h1>بازی نظر مخفی</h1><div class="card"><input id="nm" placeholder="اسمت چیه؟" maxlength="14"><input id="cd" placeholder="کد اتاق (اگه داری)" inputmode="numeric" value="'+c+'"><button onclick="go(0)">🚪 ورود به اتاق</button><button class="alt" onclick="go(1)">➕ ساخت اتاق جدید</button></div><p class="mut">تا ۲۰ نفر • رئیس اتاق همه‌چی رو کنترل می‌کنه</p>')}
+function go(create){var n=document.getElementById('nm').value.trim(),c=document.getElementById('cd').value.trim();if(!n)return alert('اسمت رو بنویس');if(!create&&!c)return alert('کد اتاق رو بنویس');
+saved={name:n,code:null};st=null;connect(function(){send(create?{t:'create',name:n,k:tok()}:{t:'join',name:n,code:c,k:tok()})})}
+function nm(id){var p=st.players.filter(function(x){return x.id===id})[0];return p?p.name:'؟'}
+function key(){var s=st;if(s.phase==='write')return['w',s.rid,s.mySub].join();
+if(s.phase==='lobby')return['l',s.players.map(function(x){return x.id+x.on}).join(),s.done.join(),s.host,rounds].join();
+return[s.phase,s.rid,s.idx,s.coin,s.host,s.qi].join()}
+function draw(){var k=key();if(k===lastKey){var p=document.getElementById('prog');if(p)p.textContent=st.got+' از '+st.need+' نفر ثبت کردن';return}lastKey=k;render()}
+function hostBar(){if(st.host!==st.you)return'';return'<div class="card"><p class="mut">👑 کنترل رئیس اتاق</p>'+(st.phase==='write'?'<button class="ghost sm" onclick="if(confirm(\'بدون کسایی که ننوشتن ادامه بدیم؟\'))send({t:\'force\'})">⏭ ادامه بدون بقیه</button>':'')+'<button class="ghost sm" onclick="if(confirm(\'برگردیم به لابی؟\'))send({t:\'lobby\'})">🏠 لابی</button></div>'}
+function render(){var s=st,H=s.host===s.you,t=s.target===s.you;
+if(s.phase==='lobby'){var link=location.origin+'/?room='+s.code;
+var list='<div class="card"><b>بازیکن‌ها ('+s.players.length+'/'+s.max+')</b>'+s.players.map(function(p){return'<div class="row"><span>'+(p.id===s.host?'👑 ':'')+esc(p.name)+(p.on?'':' <span class="mut">(آفلاین)</span>')+(s.done.indexOf(p.id)>-1?' ✅':'')+'</span>'+(H&&p.id!==s.you?'<button class="ghost sm" onclick="if(confirm(\'حذف بشه؟\'))send({t:\'kick\',id:\''+p.id+'\'})">✖</button>':'')+'</div>'}).join('')+'</div>';
+var ctl=H?'<div class="card"><b>🤫 نظر مخفی درباره‌ی یه نفر</b><p class="mut">این دور درباره‌ی کی؟ (✅ = نوبتش تموم شده)</p><div class="chips">'+s.players.map(function(p){return'<button class="alt sm" onclick="start(\'roast\',\''+p.id+'\')">'+esc(p.name)+(s.done.indexOf(p.id)>-1?' ✅':'')+'</button>'}).join('')+'</div><button onclick="start(\'roast\',null)">🎰 قرعه‌کشی</button>'+(s.done.length?'<br><button class="ghost sm" onclick="send({t:\'reset\'})">♻️ ریست نوبت‌ها</button>':'')+'</div><div class="card"><b>تعداد سؤال‌ها</b><div class="chips">'+[5,8,10].map(function(n){return'<button class="ghost sm'+(rounds===n?' on':'')+'" onclick="rounds='+n+';lastKey=\'\';draw()">'+n+'</button>'}).join('')+'</div><button class="alt" onclick="start(\'who\')">💘 حاضری با کی باشی؟</button><br><button class="hot" onclick="start(\'spicy\')">😈 حالت شیطونی</button><p class="mut">شیطونی: سؤال‌های بی‌ادبانه و چالش‌های خفن، فقط برای جمع بزرگ‌ترها 🔞</p></div>':'<p class="mut">منتظر رئیس اتاق تا بازی رو شروع کنه...</p>';
+return $('<h2>اتاق بازی</h2><div class="code">'+s.code+'</div><p class="mut">لینک رو برای بقیه بفرست:</p><div class="card mut" style="direction:ltr;word-break:break-all">'+esc(link)+'</div><button class="ghost sm" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+link+'\')">📋 کپی لینک</button>'+list+ctl)}
+var prog='<p class="mut" id="prog">'+s.got+' از '+s.need+' نفر ثبت کردن</p>';
+var qh=s.mode==='roast'?'':'<p class="mut">سؤال '+s.qi+' از '+s.qn+(s.mode==='spicy'?' • 😈 شیطونی':'')+'</p>';
+if(s.phase==='write'){
+if(s.mode==='roast'){
+if(t)return $('<div class="big">😬</div><h2>همه دارن درباره‌ی تو می‌نویسن!</h2>'+prog+hostBar());
+if(s.mySub)return $('<div class="big pop">🔒</div><h2>ثبت شد!</h2><p class="mut">منتظر بقیه...</p>'+prog+hostBar());
+return $('<h2>رفتار بد <span style="color:var(--ac)">'+esc(nm(s.target))+'</span> رو بنویس 😈</h2><p class="mut">اسمت نمیاد!</p><textarea id="tx" maxlength="200" oninput="draft=this.value" placeholder="مثلا: ...">'+esc(draft)+'</textarea><button class="ghost sm" onclick="var e=document.getElementById(\'tx\');e.value=draft=pick(IDEAS)">💡 ایده بده</button><br><button onclick="sub()">✅ ثبت</button>'+prog+hostBar())}
+if(s.mySub)return $(qh+'<div class="big pop">🔒</div><h2>ثبت شد!</h2><p class="mut">منتظر بقیه...</p>'+prog+hostBar());
+return $(qh+'<h2>'+esc(s.q)+'</h2><p class="mut">یه نفر رو انتخاب کن (مخفی)</p><div class="card chips">'+s.players.filter(function(p){return p.id!==s.you}).map(function(p){return'<button class="'+(s.mode==='spicy'?'hot':'alt')+'" onclick="send({t:\'submit\',v:\''+p.id+'\'})">'+esc(p.name)+'</button>'}).join('')+'</div>'+prog+hostBar())}
+if(s.phase==='reveal'){var it=s.item;if(!it)return $('<p class="mut">...</p>'+hostBar());var last=s.idx+1>=s.total;
+var top=s.mode==='roast'?'<p class="mut">درباره‌ی '+esc(nm(s.target))+'</p><div class="card pop"><div class="cm">«'+esc(it.t)+'»</div></div>':qh+'<p class="mut">'+esc(s.q)+'</p><div class="card pop"><div class="mut">یکی انتخاب کرده:</div><h1 style="color:var(--ac)">'+esc(it.t)+'</h1></div>';
+var bot=s.coin===null?'<p class="mut">کی نوشته؟ شیر = لو می‌ره 😱 | خط = مخفی می‌مونه 🕵️</p><span class="coin" id="coin">🪙</span><br>'+(H?'<button class="alt" onclick="flip()">🪙 شیر یا خط؟</button>':'<p class="mut">منتظر رئیس اتاق برای انداختن سکه...</p>'):(s.coin?'<div class="big pop">😱</div><h2>شیر! نویسنده: <span style="color:var(--ac)">'+esc(it.w)+'</span></h2>':'<div class="big pop">🕵️</div><h2>خط! مخفی موند</h2>')+(H?'<br><button onclick="send({t:\'next\'})">'+(last?'پایان 🎉':'بعدی ➡️')+'</button>':'<p class="mut">منتظر رئیس اتاق...</p>');
+return $('<p class="mut">'+(s.idx+1)+' از '+s.total+'</p>'+top+bot+hostBar())}
+if(s.phase==='tally'){var tp=s.tally[0],tops=s.tally.filter(function(x){return x.n===tp.n}).map(function(x){return x.name});
+return $(qh+'<div class="big pop">🏆</div><h2>'+esc(s.q)+'</h2><div class="card"><h1 style="color:var(--ac)">'+tops.map(esc).join(' و ')+'</h1><p class="mut">با '+tp.n+' رأی</p>'+s.tally.map(function(x){return'<div class="row"><span>'+esc(x.name)+'</span><b>'+x.n+'</b></div>'}).join('')+'</div><div class="card"><p class="mut">چالش برای '+esc(tops[0])+':</p><h2>'+esc(s.dare)+'</h2></div>'+(H?'<button onclick="send({t:\'next\'})">'+(s.qi>=s.qn?'نتیجه‌ی نهایی 🏁':'سؤال بعدی ➡️')+'</button>':'<p class="mut">منتظر رئیس اتاق...</p>')+hostBar())}
+if(s.phase==='end'){var body=s.mode==='roast'?'<h1>دور '+esc(nm(s.target))+' تموم شد!</h1><div class="card"><p class="mut">درجه‌ی شیطنت</p><h2>'+s.rank+'</h2><p class="mut">چالش برای '+esc(nm(s.target))+':</p><h2>'+esc(s.dare)+'</h2></div>':'<h1>نتیجه‌ی نهایی 🏁</h1><div class="card">'+(s.scores||[]).map(function(x,i){return'<div class="row"><span>'+(MEDAL[i]||'')+' '+esc(x.name)+'</span><b>'+x.n+' رأی</b></div>'}).join('')+'</div>';
+return $('<div class="big pop">🎉</div>'+body+(H?'<button onclick="send({t:\'lobby\'})">🔄 برگشت به لابی</button>':'<p class="mut">منتظر رئیس اتاق...</p>'))}}
+function start(m,t){send({t:'start',mode:m,target:t||null,rounds:rounds})}
+function sub(){var v=(document.getElementById('tx').value||'').trim();if(v){draft='';send({t:'submit',v:v})}}
+function flip(){var e=document.getElementById('coin');if(e)e.classList.add('flip');setTimeout(function(){send({t:'flip'})},900)}
+home();
+</script></body></html>
